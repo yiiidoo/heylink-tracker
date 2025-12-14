@@ -1,0 +1,12 @@
+app = "heylink-tracker"
+primary_region = "lax"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  TELEGRAM_BOT_TOKEN = "7795627429:AAHdzjkww7WEUSXRsgG38rHMre4bMFG4mpw"
+  TELEGRAM_CHAT_ID = "7155382465"
+
+[processes]
+  app = "python3 simple_tracker.py"
