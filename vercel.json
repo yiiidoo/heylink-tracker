@@ -1,18 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/tracker.py",
-      "use": "@vercel/python",
-      "config": {
-        "runtime": "python3.9"
-      }
-    }
-  ],
   "routes": [
     {
       "src": "/api/tracker",
-      "dest": "/api/tracker.py"
+      "dest": "/api/tracker.js"
     }
   ]
 }

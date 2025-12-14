@@ -14,19 +14,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
     - name: Trigger Vercel Function
       run: |
         # Vercel function'ını çağır
-        curl -X POST "${{ secrets.VERCEL_FUNCTION_URL }}" \
+        echo "Calling Vercel function..."
+        curl -v -X POST "https://heylink-tracker-9ay5v27rs-yiiidos-projects.vercel.app/api/tracker" \
           -H "Content-Type: application/json" \
-          --max-time 30
-      env:
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
-        VERCEL_FUNCTION_URL: ${{ secrets.VERCEL_FUNCTION_URL }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          --max-time 60 \
+          -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"
