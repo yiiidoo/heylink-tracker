@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: heylink-tracker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        value: 7795627429:AAHdzjkww7WEUSXRsgG38rHMre4bMFG4mpw
+      - key: TELEGRAM_CHAT_ID
+        value: 7155382465
+    healthCheckPath: /
+    buildCommand: "echo 'Build complete'"
+    startCommand: "python3 simple_tracker.py"
