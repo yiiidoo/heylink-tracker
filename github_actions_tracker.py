@@ -180,35 +180,32 @@ def scrape_heylink(url, name):
 
         # Linkleri çıkar (daha geniş pattern)
         links = []
-        # Farklı link pattern'leri dene (sadece href yakala)
-        patterns = [
-            r'href=["\']([^"\']*)["\']',  # Tüm href attribute'ları
-        ]
+        # Basit link yakalama - sadece href attribute'ları
+        href_pattern = r'href=["\']([^"\']+)["\']'
+        hrefs = re.findall(href_pattern, html, re.IGNORECASE | re.DOTALL)
 
-        all_matches = []
-        for pattern in patterns:
-            matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
-            all_matches.extend(matches)
-
-        # Link text'lerini de yakala (ayrı arama)
-        text_pattern = r'<a[^>]*href=["\'][^"\']*["\'][^>]*>([^<]*)</a>'
-        text_matches = re.findall(text_pattern, html, re.IGNORECASE | re.DOTALL)
+        # Link text'leri için basit yakalama
+        link_tags = re.findall(r'<a[^>]*>.*?</a>', html, re.IGNORECASE | re.DOTALL)
 
         # Benzersiz linkler için set kullan
         seen_hrefs = set()
-        for i, href in enumerate(all_matches):
+
+        for i, href in enumerate(hrefs):
             # Geçerli link kontrolü
             if href and not href.startswith(('javascript:', 'mailto:', '#', 'tel:')):
                 # Temizleme
                 clean_href = href.strip()
 
-                # Text'i eşleştir (varsa)
-                text = ""
-                if i < len(text_matches):
-                    text = text_matches[i].strip()[:50]
+                # Text'i çıkar (varsa)
+                text = clean_href[:50]  # Default olarak href'in başını kullan
 
-                if not text:
-                    text = clean_href[:50]
+                # Link tag'ından text çıkar (eğer varsa)
+                if i < len(link_tags):
+                    tag_match = re.search(r'<a[^>]*>([^<]*)</a>', link_tags[i], re.IGNORECASE)
+                    if tag_match:
+                        extracted_text = tag_match.group(1).strip()
+                        if extracted_text and len(extracted_text) > 2:
+                            text = extracted_text[:50]
 
                 # Benzersiz kontrol
                 if clean_href not in seen_hrefs and len(clean_href) > 5:
@@ -219,8 +216,8 @@ def scrape_heylink(url, name):
                     })
                     seen_hrefs.add(clean_href)
 
-                    # Maksimum 20 link ile sınırla
-                    if len(links) >= 20:
+                    # Maksimum 15 link ile sınırla
+                    if len(links) >= 15:
                         break
 
         for i, (href, text) in enumerate(matches, 1):
