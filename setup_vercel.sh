@@ -68,12 +68,19 @@ fi
 # 3. GitHub repository hazırlığı
 print_step "GitHub Repository Hazırlığı"
 
-echo "🔧 Git repository hazırlanıyor..."
-if git init && git add . && git commit -m "Vercel Heylink Tracker"; then
-    print_success "Git repository hazır"
+echo "🔧 Git repository kontrol ediliyor..."
+if git status --porcelain | grep -q .; then
+    # Değişiklikler var, commit edelim
+    echo "📝 Değişiklikler commit ediliyor..."
+    if git add . && git commit -m "Vercel Heylink Tracker"; then
+        print_success "Değişiklikler commit edildi"
+    else
+        print_error "Commit edilemedi"
+        exit 1
+    fi
 else
-    print_error "Git repository hazırlanamadı"
-    exit 1
+    # Zaten temiz, devam edelim
+    print_success "Git repository zaten hazır"
 fi
 
 print_warning "Şimdi GitHub'da repository oluşturmanız gerekiyor!"
