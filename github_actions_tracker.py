@@ -14,6 +14,16 @@ import os
 from datetime import datetime
 import requests
 
+# Selenium imports (GitHub Actions için)
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+
 # Environment variables'dan oku
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -126,23 +136,45 @@ def scrape_heylink(url, name):
 
         # Request
         req = urllib.request.Request(url, headers=headers)
-        # Heylink için proxy ile requests kullan
-        if 'heylink' in url.lower():
-            # Rastgele proxy seç
-            proxy = random.choice(PROXY_LIST)
-            print(f"🌐 {name}: Proxy kullanılıyor - {proxy['http']}")
 
+        # Heylink için Selenium kullan (eğer mevcutsa)
+        if 'heylink' in url.lower() and SELENIUM_AVAILABLE:
+            print(f"🤖 {name}: Selenium ile Cloudflare bypass deneniyor...")
             try:
-                response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
-                response.raise_for_status()
-                html = response.text
-            except Exception as proxy_error:
-                print(f"❌ Proxy başarısız: {proxy_error}")
-                # Proxy çalışmazsa normal urllib kullan
-                with urllib.request.urlopen(req, timeout=60) as response:
-                    html = response.read().decode('utf-8', errors='ignore')
+                chrome_options = Options()
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+                chrome_options.add_argument(f'--user-agent={random.choice(user_agents)}')
+
+                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+                driver.get(url)
+
+                # Sayfa yüklenene kadar bekle
+                time.sleep(5)
+                html = driver.page_source
+                driver.quit()
+
+                print(f"✅ {name}: Selenium başarılı!")
+
+            except Exception as selenium_error:
+                print(f"⚠️ {name}: Selenium başarısız ({selenium_error}), proxy ile requests deneniyor...")
+                # Selenium başarısız olursa proxy ile requests dene
+                try:
+                    proxy = random.choice(PROXY_LIST)
+                    response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
+                    response.raise_for_status()
+                    html = response.text
+                    print(f"✅ {name}: Proxy başarılı!")
+                except Exception as proxy_error:
+                    print(f"⚠️ {name}: Proxy de başarısız ({proxy_error}), normal yöntem deneniyor...")
+                    # Her şey başarısız olursa normal urllib kullan
+                    with urllib.request.urlopen(req, timeout=60) as response:
+                        html = response.read().decode('utf-8', errors='ignore')
         else:
-            # Normal siteler için urllib
+            # Normal siteler için urllib kullan
             with urllib.request.urlopen(req, timeout=30) as response:
                 html = response.read().decode('utf-8', errors='ignore')
 
