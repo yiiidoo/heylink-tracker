@@ -12,6 +12,7 @@ import hashlib
 import time
 import os
 from datetime import datetime
+import requests
 
 # Environment variables'dan oku
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -19,6 +20,20 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 # Global geçmiş (GitHub Actions'ta persist etmez ama basit için OK)
 page_history = {}
+
+# Ücretsiz proxy listesi (güncellenebilir)
+PROXY_LIST = [
+    {'http': 'http://190.103.177.131:80'},
+    {'http': 'http://181.78.22.150:999'},
+    {'http': 'http://190.145.200.126:53281'},
+    {'http': 'http://181.129.183.19:53281'},
+    {'http': 'http://200.105.215.22:33630'},
+    {'http': 'http://181.78.8.106:999'},
+    {'http': 'http://190.103.26.185:80'},
+    {'http': 'http://190.145.200.126:80'},
+    {'http': 'http://190.145.200.126:999'},
+    {'http': 'http://181.78.8.106:80'}
+]
 
 HEYLINKS = [
     {
@@ -111,10 +126,25 @@ def scrape_heylink(url, name):
 
         # Request
         req = urllib.request.Request(url, headers=headers)
-        # Open URL (Heylink için uzun timeout)
-        timeout_val = 60 if 'heylink' in url.lower() else 30
-        with urllib.request.urlopen(req, timeout=timeout_val) as response:
-            html = response.read().decode('utf-8', errors='ignore')
+        # Heylink için proxy ile requests kullan
+        if 'heylink' in url.lower():
+            # Rastgele proxy seç
+            proxy = random.choice(PROXY_LIST)
+            print(f"🌐 {name}: Proxy kullanılıyor - {proxy['http']}")
+
+            try:
+                response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
+                response.raise_for_status()
+                html = response.text
+            except Exception as proxy_error:
+                print(f"❌ Proxy başarısız: {proxy_error}")
+                # Proxy çalışmazsa normal urllib kullan
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    html = response.read().decode('utf-8', errors='ignore')
+        else:
+            # Normal siteler için urllib
+            with urllib.request.urlopen(req, timeout=30) as response:
+                html = response.read().decode('utf-8', errors='ignore')
 
         # Linkleri çıkar
         links = []
