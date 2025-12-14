@@ -23,16 +23,16 @@ page_history = {}
 
 # Ücretsiz proxy listesi (güncellenebilir)
 PROXY_LIST = [
-    {'http': 'http://190.103.177.131:80'},
-    {'http': 'http://181.78.22.150:999'},
-    {'http': 'http://190.145.200.126:53281'},
-    {'http': 'http://181.129.183.19:53281'},
-    {'http': 'http://200.105.215.22:33630'},
-    {'http': 'http://181.78.8.106:999'},
-    {'http': 'http://190.103.26.185:80'},
-    {'http': 'http://190.145.200.126:80'},
-    {'http': 'http://190.145.200.126:999'},
-    {'http': 'http://181.78.8.106:80'}
+    {'http': 'http://51.159.115.233:3128', 'https': 'http://51.159.115.233:3128'},
+    {'http': 'http://20.205.61.143:3128', 'https': 'http://20.205.61.143:3128'},
+    {'http': 'http://103.151.177.106:8080', 'https': 'http://103.151.177.106:8080'},
+    {'http': 'http://185.82.99.181:9091', 'https': 'http://185.82.99.181:9091'},
+    {'http': 'http://190.97.226.236:999', 'https': 'http://190.97.226.236:999'},
+    {'http': 'http://181.78.22.52:999', 'https': 'http://181.78.22.52:999'},
+    {'http': 'http://45.70.236.194:999', 'https': 'http://45.70.236.194:999'},
+    {'http': 'http://200.105.215.18:33630', 'https': 'http://200.105.215.18:33630'},
+    {'http': 'http://190.103.177.131:80', 'https': 'http://190.103.177.131:80'},
+    {'http': 'http://181.78.22.150:999', 'https': 'http://181.78.22.150:999'}
 ]
 
 HEYLINKS = [
@@ -97,7 +97,7 @@ def scrape_heylink(url, name):
                 'CF-RAY': 'dummy-ray-id',
                 'CF-Visitor': '{"scheme":"https"}'
             }
-            delay = random.uniform(10, 20)  # Heylink için uzun delay
+            delay = random.uniform(15, 30)  # Heylink için çok uzun delay
         else:
             # Normal siteler için
             headers = {
