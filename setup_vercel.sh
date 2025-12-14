@@ -105,10 +105,15 @@ fi
 print_step "GitHub'a Yükleme"
 
 echo "⬆️  Kodlar GitHub'a yükleniyor..."
+# Mevcut origin varsa kaldır
+git remote remove origin 2>/dev/null || true
+
 if git remote add origin "$GITHUB_URL" && git push -u origin main; then
     print_success "Kodlar GitHub'a yüklendi"
 else
     print_error "GitHub'a yükleme başarısız"
+    echo "Hata detayı için: git remote -v"
+    echo "Tekrar denemek için: git push -u origin main --force"
     exit 1
 fi
 
