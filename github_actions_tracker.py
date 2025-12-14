@@ -180,12 +180,9 @@ def scrape_heylink(url, name):
 
         # Linkleri çıkar (daha geniş pattern)
         links = []
-        # Farklı link pattern'leri dene
+        # Farklı link pattern'leri dene (sadece href yakala)
         patterns = [
-            r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>',  # Standart
-            r'href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>',  # Basitleştirilmiş
-            r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>.*?</a>',  # İçerik opsiyonel
-            r'<link[^>]*href=["\']([^"\']*)["\']',  # Link tag'leri
+            r'href=["\']([^"\']*)["\']',  # Tüm href attribute'ları
         ]
 
         all_matches = []
@@ -193,25 +190,31 @@ def scrape_heylink(url, name):
             matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
             all_matches.extend(matches)
 
+        # Link text'lerini de yakala (ayrı arama)
+        text_pattern = r'<a[^>]*href=["\'][^"\']*["\'][^>]*>([^<]*)</a>'
+        text_matches = re.findall(text_pattern, html, re.IGNORECASE | re.DOTALL)
+
         # Benzersiz linkler için set kullan
         seen_hrefs = set()
-        for match in all_matches:
-            if isinstance(match, tuple):
-                href, text = match
-            else:
-                href, text = match, ""
-
+        for i, href in enumerate(all_matches):
             # Geçerli link kontrolü
             if href and not href.startswith(('javascript:', 'mailto:', '#', 'tel:')):
                 # Temizleme
                 clean_href = href.strip()
-                clean_text = text.strip()[:50] if text else clean_href[:50]
+
+                # Text'i eşleştir (varsa)
+                text = ""
+                if i < len(text_matches):
+                    text = text_matches[i].strip()[:50]
+
+                if not text:
+                    text = clean_href[:50]
 
                 # Benzersiz kontrol
                 if clean_href not in seen_hrefs and len(clean_href) > 5:
                     links.append({
                         'position': len(links) + 1,
-                        'text': clean_text,
+                        'text': text,
                         'href': clean_href
                     })
                     seen_hrefs.add(clean_href)
