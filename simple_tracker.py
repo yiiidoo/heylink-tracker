@@ -19,23 +19,19 @@ TELEGRAM_CHAT_ID = "7155382465"
 HEYLINKS = [
     {
         "url": "https://heylink.me/sorunsuz",
-        "name": "Sorunsuz Ana Sayfa",
-        "track_keywords": ["volacasinonun"]  # Özel kelimeler
+        "name": "Sorunsuz Ana Sayfa"
     },
     {
         "url": "https://heylink.me/GuvenilirBahisSitelerimiz/",
-        "name": "Güvenilir Bahis Siteleri",
-        "track_keywords": ["casino", "bahis"]  # Özel kelimeler
+        "name": "Güvenilir Bahis Siteleri"
     },
     {
         "url": "https://httpbin.org/html",
-        "name": "Test Sayfası (httpbin.org)",
-        "track_keywords": []
+        "name": "Test Sayfası (httpbin.org)"
     },
     {
         "url": "https://www.google.com",
-        "name": "Google (test)",
-        "track_keywords": []
+        "name": "Google (test)"
     }
 ]
 
@@ -63,11 +59,8 @@ def send_telegram_message(message):
         print(f"Telegram hatası: {e}")
         return False
 
-def scrape_heylink(url, name, track_keywords=None):
-    """Sayfayı scrape et ve değişiklikleri tespit et"""
-    if track_keywords is None:
-        track_keywords = []
-
+def scrape_heylink(url, name):
+    """Sayfayı scrape et ve link sıralaması değişikliklerini tespit et"""
     try:
         # Çok gelişmiş bot-karşıtı headers
         user_agents = [
@@ -97,8 +90,8 @@ def scrape_heylink(url, name, track_keywords=None):
             'Cookie': ''  # Boş cookie
         }
 
-        # Rastgele delay (2-5 saniye arası)
-        delay = random.uniform(2, 5)
+        # Rastgele delay (3-7 saniye arası)
+        delay = random.uniform(3, 7)
         print(f"⏳ {name}: {delay:.1f}s bekleniyor...")
         time.sleep(delay)
 
@@ -109,27 +102,30 @@ def scrape_heylink(url, name, track_keywords=None):
         with urllib.request.urlopen(req, timeout=45) as response:
             html = response.read().decode('utf-8', errors='ignore')
 
-        # Sayfa hash'i oluştur
-        page_hash = hashlib.md5(html.encode('utf-8')).hexdigest()
+        # Tüm linkleri çıkar (sıralama ile)
+        links = []
+        link_pattern = r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>'
+        matches = re.findall(link_pattern, html, re.IGNORECASE | re.DOTALL)
 
-        # Link sayısı
-        link_count = len(re.findall(r'<a[^>]*href[^>]*>.*?</a>', html, re.IGNORECASE))
+        for i, (href, text) in enumerate(matches, 1):
+            clean_text = text.strip()
+            if clean_text and len(clean_text) > 1:  # Anlamsız linkleri filtrele
+                links.append({
+                    'position': i,
+                    'text': clean_text[:50],  # İlk 50 karakter
+                    'href': href
+                })
 
-        # Özel kelimeler kontrolü
-        keyword_changes = {}
-        if track_keywords:
-            for keyword in track_keywords:
-                count = html.lower().count(keyword.lower())
-                keyword_changes[keyword] = count
+        # Link listesinin hash'i
+        links_hash = hashlib.md5(str(links).encode('utf-8')).hexdigest()
 
         result = {
             "success": True,
             "name": name,
             "url": url,
-            "links_found": link_count,
-            "page_hash": page_hash,
-            "keyword_counts": keyword_changes,
-            "html_length": len(html),
+            "links_found": len(links),
+            "links": links[:10],  # İlk 10 link
+            "links_hash": links_hash,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -137,33 +133,38 @@ def scrape_heylink(url, name, track_keywords=None):
         url_key = url
         if url_key in page_history:
             prev_data = page_history[url_key]
+            prev_links = prev_data.get('links', [])
+            prev_hash = prev_data.get('links_hash', '')
 
-            # Hash değişikliği
-            if prev_data['page_hash'] != page_hash:
-                result["hash_changed"] = True
-                result["hash_diff"] = "Sayfa içeriği değişti"
+            # Link sıralaması değişikliği
+            if links_hash != prev_hash:
+                result["ranking_changed"] = True
+
+                # Yeni/eksilen linkleri tespit et
+                current_hrefs = {link['href'] for link in links}
+                prev_hrefs = {link['href'] for link in prev_links}
+
+                new_links = current_hrefs - prev_hrefs
+                removed_links = prev_hrefs - current_hrefs
+
+                result["new_links"] = len(new_links)
+                result["removed_links"] = len(removed_links)
+
+                if new_links or removed_links:
+                    result["change_summary"] = f"🔄 Sıralama değişti! +{len(new_links)} yeni, -{len(removed_links)} çıkarıldı"
+                else:
+                    result["change_summary"] = "🔄 Link sırası değişti"
             else:
-                result["hash_changed"] = False
-                result["hash_diff"] = "Değişiklik yok"
-
-            # Özel kelime değişiklikleri
-            if track_keywords:
-                keyword_diffs = {}
-                for keyword in track_keywords:
-                    prev_count = prev_data.get('keyword_counts', {}).get(keyword, 0)
-                    curr_count = keyword_changes.get(keyword, 0)
-                    if prev_count != curr_count:
-                        keyword_diffs[keyword] = f"{prev_count} → {curr_count}"
-
-                if keyword_diffs:
-                    result["keyword_changes"] = keyword_diffs
+                result["ranking_changed"] = False
+                result["change_summary"] = "✅ Sıralama değişikliği yok"
         else:
             result["first_check"] = True
+            result["change_summary"] = "🆕 İlk kontrol - referans alındı"
 
         # Geçmişi güncelle
         page_history[url_key] = {
-            'page_hash': page_hash,
-            'keyword_counts': keyword_changes,
+            'links': links,
+            'links_hash': links_hash,
             'timestamp': result['timestamp']
         }
 
@@ -182,7 +183,7 @@ def scrape_heylink(url, name, track_keywords=None):
 def main():
     print("🤖 Heylink Tracker Başlatıldı")
     print("📊 Her 15 dakikada bir kontrol edilecek")
-    print("🎯 Sayfa değişiklikleri ve özel kelimeler takip edilecek")
+    print("🎯 Link sıralaması değişiklikleri takip edilecek")
     print("=" * 50)
 
     while True:
@@ -192,14 +193,13 @@ def main():
             start_msg += f"📅 {datetime.now().strftime('%H:%M:%S')}\n"
             start_msg += f"📊 {len(HEYLINKS)} sayfa kontrol ediliyor\n\n"
             start_msg += f"🔄 Her 15 dakikada bir kontrol ediliyor\n"
-            start_msg += f"🎯 Sayfa içeriği ve özel kelimeler takip ediliyor"
+            start_msg += f"🎯 Link sıralaması değişiklikleri takip ediliyor"
 
             send_telegram_message(start_msg)
 
             results = []
             for heylink in HEYLINKS:
-                track_keywords = heylink.get("track_keywords", [])
-                result = scrape_heylink(heylink["url"], heylink["name"], track_keywords)
+                result = scrape_heylink(heylink["url"], heylink["name"])
                 results.append(result)
                 print(f"✅ {result['name']}: {'Başarılı' if result['success'] else 'Hata'}")
 
@@ -226,35 +226,34 @@ def main():
 
                 if result["success"]:
                     result_msg += f"✅ Erişim: Başarılı\n"
-                    result_msg += f"🔗 Link sayısı: {result['links_found']}\n"
-                    result_msg += f"📄 Sayfa boyutu: {result.get('html_length', 0)} karakter\n"
+                    result_msg += f"🔗 Toplam link: {result['links_found']}\n"
 
                     # İlk kontrol mü?
                     if result.get("first_check"):
-                        result_msg += f"🆕 İlk kontrol - referans alındı\n"
+                        result_msg += f"🆕 İlk kontrol - sıralama kaydedildi\n"
                     else:
-                        # Hash değişikliği
-                        if result.get("hash_changed"):
-                            result_msg += f"⚡ **DEĞİŞİKLİK TESPİT EDİLDİ!**\n"
-                            result_msg += f"📝 {result.get('hash_diff', 'İçerik değişti')}\n"
+                        # Sıralama değişikliği
+                        if result.get("ranking_changed"):
+                            result_msg += f"🚨 **SIRALAMA DEĞİŞTİ!**\n"
+                            result_msg += f"📊 {result.get('change_summary', 'Sıralama güncellendi')}\n"
+
+                            # Yeni/eksilen link sayısı
+                            new_count = result.get("new_links", 0)
+                            removed_count = result.get("removed_links", 0)
+                            if new_count > 0 or removed_count > 0:
+                                result_msg += f"➕ {new_count} yeni link, ➖ {removed_count} çıkarıldı\n"
+
                             changes_found += 1
                         else:
-                            result_msg += f"✅ {result.get('hash_diff', 'Değişiklik yok')}\n"
+                            result_msg += f"✅ {result.get('change_summary', 'Sıralama aynı')}\n"
 
-                        # Keyword değişiklikleri
-                        keyword_changes = result.get("keyword_changes", {})
-                        if keyword_changes:
-                            result_msg += f"🏷️ **Kelime Değişiklikleri:**\n"
-                            for keyword, change in keyword_changes.items():
-                                result_msg += f"• '{keyword}': {change}\n"
-                            changes_found += 1
-
-                    # Özel kelime sayıları
-                    keyword_counts = result.get("keyword_counts", {})
-                    if keyword_counts:
-                        result_msg += f"🔍 Takip edilen kelimeler: "
-                        keyword_list = [f"{k}({v})" for k, v in keyword_counts.items()]
-                        result_msg += ", ".join(keyword_list) + "\n"
+                    # İlk 5 linki göster (değişiklik varsa)
+                    if result.get("ranking_changed") or result.get("first_check"):
+                        links = result.get("links", [])[:5]
+                        if links:
+                            result_msg += f"📋 İlk 5 link:\n"
+                            for link in links:
+                                result_msg += f"• {link['position']}. {link['text'][:30]}...\n"
 
                 else:
                     result_msg += f"❌ Erişim: Başarısız\n"
