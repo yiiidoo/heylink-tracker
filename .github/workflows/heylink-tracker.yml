@@ -1,0 +1,45 @@
+name: Heylink Tracker Cron
+
+on:
+  schedule:
+    # Her 5 dakikada bir çalıştır
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Manuel çalıştırma için
+
+jobs:
+  track-heylinks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests python-telegram-bot beautifulsoup4
+
+    - name: Test tracker locally
+      run: |
+        python api/tracker.py
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+
+    - name: Trigger Vercel Function
+      run: |
+        # Vercel function'ını çağır
+        curl -X POST ${{ secrets.VERCEL_FUNCTION_URL }} \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+          --max-time 30
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+        VERCEL_FUNCTION_URL: ${{ secrets.VERCEL_FUNCTION_URL }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

@@ -1,0 +1,19 @@
+# Local development files
+run.py
+add_urls.py
+test_system.py
+deploy.sh
+
+# Documentation
+README.md
+
+# Git
+.gitignore
+.github/
+
+# Local data and logs
+data/
+logs/
+
+# Local config
+config.json
