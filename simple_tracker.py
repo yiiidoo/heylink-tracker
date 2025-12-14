@@ -180,9 +180,8 @@ def main():
             # Başlangıç bildirimi
             start_msg = f"🤖 **Heylink Tracker - Kontrol Başlıyor**\n\n"
             start_msg += f"📅 {datetime.now().strftime('%H:%M:%S')}\n"
-            start_msg += f"📊 {len(HEYLINKS)} sayfa kontrol ediliyor\n\n"
-            start_msg += f"🔄 Her 15 dakikada bir kontrol ediliyor\n"
-            start_msg += f"🎯 Link sıralaması değişiklikleri takip ediliyor"
+            start_msg += f"🎯 **Kopilbey Sponsorlar** sayfası kontrol ediliyor\n\n"
+            start_msg += f"🔄 Her 15 dakikada bir link sıralaması kontrol edilecek"
 
             send_telegram_message(start_msg)
 

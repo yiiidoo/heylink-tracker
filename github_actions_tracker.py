@@ -186,8 +186,8 @@ def main():
     # Başlangıç bildirimi
     start_msg = "🤖 **GitHub Actions - Kontrol Başlıyor**\n\n"
     start_msg += f"📅 {datetime.now().strftime('%H:%M:%S')}\n"
-    start_msg += f"📊 {len(HEYLINKS)} sayfa kontrol ediliyor\n\n"
-    start_msg += f"🎯 Link sıralaması değişiklikleri takip ediliyor"
+    start_msg += f"🎯 **Kopilbey Sponsorlar** sayfası kontrol ediliyor\n\n"
+    start_msg += f"🔄 Her 15 dakikada bir link sıralaması kontrol edilecek"
 
     send_telegram_message(start_msg)
 
@@ -243,9 +243,10 @@ def main():
     # Özet
     result_msg += f"🎯 **Özet:**\n"
     if changes_found > 0:
-        result_msg += f"🚨 **{changes_found} SIRALAMA DEĞİŞİKLİĞİ** tespit edildi!\n"
+        result_msg += f"🚨 **SIRALAMA DEĞİŞTİ!**\n"
+        result_msg += f"🔄 Kopilbey Sponsorlar sayfasında link sıralaması güncellendi!\n"
     else:
-        result_msg += f"✅ Tüm sayfalarda sıralama değişikliği yok\n"
+        result_msg += f"✅ Kopilbey Sponsorlar sayfasında değişiklik yok\n"
 
     send_telegram_message(result_msg)
 
