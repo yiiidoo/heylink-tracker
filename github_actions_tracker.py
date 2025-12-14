@@ -22,20 +22,8 @@ page_history = {}
 
 HEYLINKS = [
     {
-        "url": "https://heylink.me/sorunsuz",
-        "name": "Sorunsuz Ana Sayfa"
-    },
-    {
-        "url": "https://heylink.me/GuvenilirBahisSitelerimiz/",
-        "name": "Güvenilir Bahis Siteleri"
-    },
-    {
-        "url": "https://httpbin.org/html",
-        "name": "Test Sayfası (httpbin.org)"
-    },
-    {
-        "url": "https://www.google.com",
-        "name": "Google (test)"
+        "url": "https://heylink.me/Kopilbeysponsorlar/",
+        "name": "Kopilbey Sponsorlar"
     }
 ]
 
