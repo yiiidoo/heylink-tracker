@@ -184,6 +184,7 @@ def main():
     print("🤖 Heylink Tracker Başlatıldı")
     print("📊 Her 15 dakikada bir kontrol edilecek")
     print("🎯 Link sıralaması değişiklikleri takip edilecek")
+    print("🌐 Replit Deployment - Sürekli Çalışacak")
     print("=" * 50)
 
     while True:
