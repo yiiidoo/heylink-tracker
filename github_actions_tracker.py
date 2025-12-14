@@ -178,10 +178,47 @@ def scrape_heylink(url, name):
             with urllib.request.urlopen(req, timeout=30) as response:
                 html = response.read().decode('utf-8', errors='ignore')
 
-        # Linkleri çıkar
+        # Linkleri çıkar (daha geniş pattern)
         links = []
-        link_pattern = r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>'
-        matches = re.findall(link_pattern, html, re.IGNORECASE | re.DOTALL)
+        # Farklı link pattern'leri dene
+        patterns = [
+            r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>',  # Standart
+            r'href=["\']([^"\']*)["\'][^>]*>([^<]*)</a>',  # Basitleştirilmiş
+            r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>.*?</a>',  # İçerik opsiyonel
+            r'<link[^>]*href=["\']([^"\']*)["\']',  # Link tag'leri
+        ]
+
+        all_matches = []
+        for pattern in patterns:
+            matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
+            all_matches.extend(matches)
+
+        # Benzersiz linkler için set kullan
+        seen_hrefs = set()
+        for match in all_matches:
+            if isinstance(match, tuple):
+                href, text = match
+            else:
+                href, text = match, ""
+
+            # Geçerli link kontrolü
+            if href and not href.startswith(('javascript:', 'mailto:', '#', 'tel:')):
+                # Temizleme
+                clean_href = href.strip()
+                clean_text = text.strip()[:50] if text else clean_href[:50]
+
+                # Benzersiz kontrol
+                if clean_href not in seen_hrefs and len(clean_href) > 5:
+                    links.append({
+                        'position': len(links) + 1,
+                        'text': clean_text,
+                        'href': clean_href
+                    })
+                    seen_hrefs.add(clean_href)
+
+                    # Maksimum 20 link ile sınırla
+                    if len(links) >= 20:
+                        break
 
         for i, (href, text) in enumerate(matches, 1):
             clean_text = text.strip()
