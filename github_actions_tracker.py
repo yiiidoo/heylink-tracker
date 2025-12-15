@@ -13,16 +13,14 @@ import time
 import os
 from datetime import datetime
 import requests
+import ssl
+from bs4 import BeautifulSoup
 
 # Selenium imports (GitHub Actions için)
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-    SELENIUM_AVAILABLE = True
-except ImportError:
-    SELENIUM_AVAILABLE = False
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Environment variables'dan oku
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -138,7 +136,7 @@ def scrape_heylink(url, name):
         req = urllib.request.Request(url, headers=headers)
 
         # Heylink için Selenium kullan (eğer mevcutsa)
-        if 'heylink' in url.lower() and SELENIUM_AVAILABLE:
+        if 'heylink' in url.lower():
             print(f"🤖 {name}: Selenium ile Cloudflare bypass deneniyor...")
             try:
                 chrome_options = Options()
@@ -171,45 +169,68 @@ def scrape_heylink(url, name):
                 except Exception as proxy_error:
                     print(f"⚠️ {name}: Proxy de başarısız ({proxy_error}), normal yöntem deneniyor...")
                     # Her şey başarısız olursa normal urllib kullan
-                    with urllib.request.urlopen(req, timeout=60) as response:
+                    with urllib.request.urlopen(req, timeout=60, context=ssl._create_unverified_context()) as response:
                         html = response.read().decode('utf-8', errors='ignore')
         else:
             # Normal siteler için urllib kullan
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=30, context=ssl._create_unverified_context()) as response:
                 html = response.read().decode('utf-8', errors='ignore')
+        # Debug: Save HTML to file for inspection
+        with open("heylink_content.html", "w", encoding="utf-8") as f:
+            f.write(html)
+        print("heylink_content.html dosyasına kaydedildi.")
 
-        # Linkleri çıkar (daha geniş pattern)
-        links = []
-        # Çok basit link yakalama - sadece sayım
-        try:
-            # Tüm link tag'larını say
-            link_count = len(re.findall(r'<a[^>]*href[^>]*>.*?</a>', html, re.IGNORECASE | re.DOTALL))
+        def parse_links_from_html(page_html):
+            """Heylink sayfasındaki sponsor linklerini çıkar."""
+            parsed_links = []
+            soup = BeautifulSoup(page_html, "html.parser")
+            cards = soup.select("div.preview-link-item__component a.preview-link-wrapper")
+            for idx, card in enumerate(cards, start=1):
+                href = card.get("href", "").strip()
+                if not href or href.startswith(("javascript:", "mailto:", "#", "tel:")):
+                    continue
+                name_el = card.select_one(".link-info .name")
+                text = name_el.get_text(strip=True) if name_el else card.get_text(strip=True)
+                if not text:
+                    text = href
+                parsed_links.append(
+                    {
+                        "position": idx,
+                        "text": text[:120],
+                        "href": href,
+                    }
+                )
+            return parsed_links
 
-            # İlk 5 linki basitçe çıkar
-            link_matches = re.findall(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>([^<]*)</a>', html, re.IGNORECASE | re.DOTALL)
+        # Linkleri çıkar (BeautifulSoup ile öncelikli, regex yedekli)
+        links = parse_links_from_html(html)
+        link_count = len(links)
 
-            for i, (href, text) in enumerate(link_matches[:5]):  # Sadece ilk 5
-                if href and not href.startswith(('javascript:', 'mailto:', '#', 'tel:')):
-                    clean_text = text.strip()[:30] if text.strip() else href[:30]
-                    links.append({
-                        'position': i + 1,
-                        'text': clean_text,
-                        'href': href
-                    })
+        if not links:
+            try:
+                # Tüm link tag'larını say (yedek)
+                link_count = len(re.findall(r'<a[^>]*href[^>]*>.*?</a>', html, re.IGNORECASE | re.DOTALL))
+                link_matches = re.findall(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>([^<]*)</a>', html, re.IGNORECASE | re.DOTALL)
 
-            # Eğer hiç link bulunamadıysa, basit count kullan
-            if not links:
-                for i in range(min(3, link_count)):  # En fazla 3 boş link
-                    links.append({
-                        'position': i + 1,
-                        'text': f'Link {i+1}',
-                        'href': f'#link{i+1}'
-                    })
+                for i, (href, text) in enumerate(link_matches[:5]):  # Sadece ilk 5
+                    if href and not href.startswith(('javascript:', 'mailto:', '#', 'tel:')):
+                        clean_text = text.strip()[:120] if text.strip() else href[:120]
+                        links.append({
+                            'position': i + 1,
+                            'text': clean_text,
+                            'href': href
+                        })
 
-        except Exception as parse_error:
-            print(f"⚠️ Link parsing hatası: {parse_error}")
-            # Hata durumunda basit count kullan
-            link_count = 5  # Tahmini
+                if not links:
+                    for i in range(min(3, link_count)):  # En fazla 3 boş link
+                        links.append({
+                            'position': i + 1,
+                            'text': f'Link {i+1}',
+                            'href': f'#link{i+1}'
+                        })
+            except Exception as parse_error:
+                print(f"⚠️ Link parsing hatası: {parse_error}")
+                link_count = len(links)
 
 
         # Link listesinin hash'i
