@@ -47,7 +47,7 @@ PROXY_LIST = [
 
 HEYLINKS = [
     {
-        "url": "https://heylink.me/kopilbeysponsorlar/",
+        "url": "https://heylink.me/Kopilbeysponsorlar/",
         "name": "Kopilbey Sponsorlar"
     }
 ]
@@ -289,7 +289,7 @@ def main():
     start_msg = "🤖 **GitHub Actions - Kontrol Başlıyor**\n\n"
     start_msg += f"📅 {datetime.now().strftime('%H:%M:%S')}\n"
     start_msg += f"🎯 **Kopilbey Sponsorlar** sayfası kontrol ediliyor\n"
-    start_msg += f"🔗 URL: https://heylink.me/kopilbeysponsorlar/\n\n"
+    start_msg += f"🔗 URL: https://heylink.me/Kopilbeysponsorlar/\n\n"
     start_msg += f"🔄 Her 15 dakikada bir link sıralaması kontrol edilecek"
 
     send_telegram_message(start_msg)
