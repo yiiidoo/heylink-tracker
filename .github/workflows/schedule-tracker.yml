@@ -22,16 +22,10 @@ jobs:
     - name: Setup Chrome
       uses: browser-actions/setup-chrome@latest
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2t64 libgtk-3-0 libx11-xcb1 libxcb-dri3-0 libxcb-dri3-0 libxss1 libasound2t64
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        playwright install --with-deps chromium
 
     - name: Run Heylink Tracker
       env:
@@ -39,4 +33,4 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
         python github_actions_tracker.py
-      timeout-minutes: 20
+      timeout-minutes: 15

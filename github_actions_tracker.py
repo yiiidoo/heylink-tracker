@@ -17,7 +17,6 @@ import ssl
 from bs4 import BeautifulSoup
 import cloudscraper
 from fake_useragent import UserAgent
-from playwright.sync_api import sync_playwright
 
 # Selenium imports (GitHub Actions için)
 from selenium import webdriver
@@ -90,110 +89,56 @@ def scrape_heylink(url, name):
         print(f"⏳ {name}: {delay:.1f}s bekleniyor...")
         time.sleep(delay)
 
-        # Playwright ile güçlü Cloudflare bypass
-        print(f"🎭 {name}: Playwright ile ultra bypass başlatılıyor...")
+        # Cloudscraper ile güçlü Cloudflare bypass
+        print(f"🔥 {name}: Cloudscraper ile Cloudflare bypass başlatılıyor...")
         try:
-            with sync_playwright() as p:
-                # Gerçekçi browser fingerprinting
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--no-first-run',
-                        '--no-zygote',
-                        '--disable-gpu',
-                        '--disable-web-security',
-                        '--disable-features=VizDisplayCompositor'
-                    ]
-                )
+            # cloudscraper ile Cloudflare bypass
+            scraper = cloudscraper.create_scraper(
+                browser={
+                    'browser': 'chrome',
+                    'platform': 'windows',
+                    'desktop': True
+                }
+            )
+            response = scraper.get(url, timeout=60)
 
-                # Gerçekçi context oluştur
-                context = browser.new_context(
-                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    viewport={'width': 1920, 'height': 1080},
-                    locale='tr-TR',
-                    timezone_id='Europe/Istanbul'
-                )
+            if response.status_code == 200:
+                html = response.text
+                print(f"✅ {name}: Cloudscraper başarılı!")
+            else:
+                raise Exception(f"HTTP {response.status_code}")
 
-                # Cookie ve localStorage ekle
-                page = context.new_page()
-
-                # Cloudflare'ı atlatmak için çeşitli teknikler
-                page.add_init_script("""
-                    // Cookie ve localStorage taklidi
-                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-
-                    // Plugin'leri taklit et
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [
-                            {name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer'},
-                            {name: 'Chrome PDF Viewer', description: '', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai'},
-                        ]
-                    });
-
-                    // Language taklidi
-                    Object.defineProperty(navigator, 'languages', {get: () => ['tr-TR', 'tr', 'en-US', 'en']});
-                """)
-
-                # Sayfaya git
-                response = page.goto(url, wait_until='networkidle', timeout=60000)
-
-                if response.status == 403:
-                    raise Exception("403 Forbidden")
-
-                # Cloudflare challenge bekle
-                print(f"⏳ {name}: Cloudflare challenge bekleniyor...")
-                time.sleep(8)
-
-                # Sayfa içeriğini al
-                html = page.content()
-                browser.close()
-
-                if 'challenge' in html.lower() or 'forbidden' in html.lower():
-                    raise Exception("Cloudflare challenge failed")
-
-                print(f"✅ {name}: Playwright ultra bypass başarılı!")
-
-        except Exception as pw_error:
-            print(f"⚠️ {name}: Playwright başarısız ({pw_error}), cloudscraper deneniyor...")
+        except Exception as cf_error:
+            print(f"⚠️ {name}: Cloudscraper başarısız ({cf_error}), Selenium deneniyor...")
             try:
-                # cloudscraper fallback
-                scraper = cloudscraper.create_scraper()
-                response = scraper.get(url, timeout=60)
+                # Selenium fallback
+                chrome_options = Options()
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+                chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                chrome_options.add_experimental_option('useAutomationExtension', False)
+                chrome_options.add_argument(f'--user-agent={ua.random}')
 
-                if response.status_code == 200:
-                    html = response.text
-                    print(f"✅ {name}: Cloudscraper başarılı!")
-                else:
-                    raise Exception(f"HTTP {response.status_code}")
+                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-            except Exception as cf_error:
-                print(f"⚠️ {name}: Cloudscraper başarısız ({cf_error}), Selenium deneniyor...")
-                try:
-                    # Selenium fallback
-                    chrome_options = Options()
-                    chrome_options.add_argument('--headless')
-                    chrome_options.add_argument('--no-sandbox')
-                    chrome_options.add_argument('--disable-dev-shm-usage')
-                    chrome_options.add_argument('--disable-gpu')
-                    chrome_options.add_argument('--window-size=1920,1080')
-                    chrome_options.add_argument(f'--user-agent={ua.random}')
+                # Webdriver detection bypass
+                driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-                    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-                    driver.get(url)
+                driver.get(url)
+                time.sleep(15)
 
-                    time.sleep(15)
-                    html = driver.page_source
-                    driver.quit()
+                html = driver.page_source
+                driver.quit()
 
-                    print(f"✅ {name}: Selenium başarılı!")
+                print(f"✅ {name}: Selenium başarılı!")
 
-                except Exception as selenium_error:
-                    print(f"❌ {name}: Tüm yöntemler başarısız - {selenium_error}")
-                    raise Exception("Tüm bypass yöntemleri başarısız")
+            except Exception as selenium_error:
+                print(f"❌ {name}: Tüm yöntemler başarısız - {selenium_error}")
+                raise Exception("Tüm bypass yöntemleri başarısız")
         # Debug: Save HTML to file for inspection
         with open("heylink_content.html", "w", encoding="utf-8") as f:
             f.write(html)
