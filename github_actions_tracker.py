@@ -47,7 +47,7 @@ PROXY_LIST = [
 
 HEYLINKS = [
     {
-        "url": "https://heylink.me/Kopilbeysponsorlar/",
+        "url": "https://heylink.me/kopilbeysponsorlar/",
         "name": "Kopilbey Sponsorlar"
     }
 ]
@@ -89,10 +89,37 @@ def scrape_heylink(url, name):
         print(f"⏳ {name}: {delay:.1f}s bekleniyor...")
         time.sleep(delay)
 
-        # Cloudscraper ile güçlü Cloudflare bypass
-        print(f"🔥 {name}: Cloudscraper ile Cloudflare bypass başlatılıyor...")
+        # Çoklu yöntemle Cloudflare bypass
+        print(f"🔥 {name}: Çoklu bypass yöntemleri deneniyor...")
+
+        # Yöntem 1: Basit requests (bazen şaşırtıcı şekilde çalışır)
         try:
-            # cloudscraper ile Cloudflare bypass
+            print(f"📡 {name}: Basit requests deneniyor...")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Cache-Control': 'max-age=0'
+            }
+
+            response = requests.get(url, headers=headers, timeout=30)
+            if response.status_code == 200:
+                html = response.text
+                print(f"✅ {name}: Basit requests başarılı!")
+                return html
+        except Exception as simple_error:
+            print(f"⚠️ {name}: Basit requests başarısız ({simple_error})")
+
+        # Yöntem 2: Cloudscraper
+        try:
+            print(f"🌩️ {name}: Cloudscraper deneniyor...")
             scraper = cloudscraper.create_scraper(
                 browser={
                     'browser': 'chrome',
@@ -100,45 +127,53 @@ def scrape_heylink(url, name):
                     'desktop': True
                 }
             )
-            response = scraper.get(url, timeout=60)
+            response = scraper.get(url, timeout=45)
 
             if response.status_code == 200:
                 html = response.text
                 print(f"✅ {name}: Cloudscraper başarılı!")
+                return html
             else:
-                raise Exception(f"HTTP {response.status_code}")
-
+                print(f"⚠️ {name}: Cloudscraper HTTP {response.status_code}")
         except Exception as cf_error:
-            print(f"⚠️ {name}: Cloudscraper başarısız ({cf_error}), Selenium deneniyor...")
-            try:
-                # Selenium fallback
-                chrome_options = Options()
-                chrome_options.add_argument('--headless')
-                chrome_options.add_argument('--no-sandbox')
-                chrome_options.add_argument('--disable-dev-shm-usage')
-                chrome_options.add_argument('--disable-gpu')
-                chrome_options.add_argument('--window-size=1920,1080')
-                chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-                chrome_options.add_experimental_option('useAutomationExtension', False)
-                chrome_options.add_argument(f'--user-agent={ua.random}')
+            print(f"⚠️ {name}: Cloudscraper başarısız ({cf_error})")
 
-                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        # Yöntem 3: Selenium (son çare)
+        try:
+            print(f"🤖 {name}: Selenium deneniyor...")
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--disable-plugins')
+            chrome_options.add_argument('--disable-images')
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
+            chrome_options.add_argument(f'--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
-                # Webdriver detection bypass
-                driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-                driver.get(url)
-                time.sleep(15)
+            # Webdriver detection bypass
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-                html = driver.page_source
-                driver.quit()
+            driver.get(url)
 
-                print(f"✅ {name}: Selenium başarılı!")
+            # Sayfa yüklenmesini bekle
+            time.sleep(20)
 
-            except Exception as selenium_error:
-                print(f"❌ {name}: Tüm yöntemler başarısız - {selenium_error}")
-                raise Exception("Tüm bypass yöntemleri başarısız")
+            html = driver.page_source
+            driver.quit()
+
+            print(f"✅ {name}: Selenium başarılı!")
+            return html
+
+        except Exception as selenium_error:
+            print(f"❌ {name}: Tüm yöntemler başarısız - {selenium_error}")
+            raise Exception("Tüm bypass yöntemleri başarısız")
         # Debug: Save HTML to file for inspection
         with open("heylink_content.html", "w", encoding="utf-8") as f:
             f.write(html)
@@ -253,7 +288,8 @@ def main():
     # Başlangıç bildirimi
     start_msg = "🤖 **GitHub Actions - Kontrol Başlıyor**\n\n"
     start_msg += f"📅 {datetime.now().strftime('%H:%M:%S')}\n"
-    start_msg += f"🎯 **Kopilbey Sponsorlar** sayfası kontrol ediliyor\n\n"
+    start_msg += f"🎯 **Kopilbey Sponsorlar** sayfası kontrol ediliyor\n"
+    start_msg += f"🔗 URL: https://heylink.me/kopilbeysponsorlar/\n\n"
     start_msg += f"🔄 Her 15 dakikada bir link sıralaması kontrol edilecek"
 
     send_telegram_message(start_msg)

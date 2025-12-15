@@ -32,5 +32,10 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
+        # URL kontrolü
+        echo "🔍 URL kontrol ediliyor..."
+        curl -s -o /dev/null -w "%{http_code}" "https://heylink.me/Kopilbeysponsorlar/" || echo "URL kontrol edilemedi"
+
+        # Ana scripti çalıştır
         python github_actions_tracker.py
-      timeout-minutes: 15
+      timeout-minutes: 20
