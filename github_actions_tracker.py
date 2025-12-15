@@ -211,14 +211,6 @@ def scrape_heylink(url, name):
             # Hata durumunda basit count kullan
             link_count = 5  # Tahmini
 
-        for i, (href, text) in enumerate(matches, 1):
-            clean_text = text.strip()
-            if clean_text and len(clean_text) > 1:
-                links.append({
-                    'position': i,
-                    'text': clean_text[:50],
-                    'href': href
-                })
 
         # Link listesinin hash'i
         links_hash = hashlib.md5(str(links).encode('utf-8')).hexdigest()
