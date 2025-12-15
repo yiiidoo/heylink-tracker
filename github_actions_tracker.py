@@ -15,6 +15,8 @@ from datetime import datetime
 import requests
 import ssl
 from bs4 import BeautifulSoup
+import cloudscraper
+from fake_useragent import UserAgent
 
 # Selenium imports (GitHub Actions için)
 from selenium import webdriver
@@ -75,106 +77,66 @@ def send_telegram_message(message):
 def scrape_heylink(url, name):
     """Sayfayı scrape et ve link sıralaması değişikliklerini tespit et"""
     try:
-        # Bot-karşıtı headers
-        user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
-        ]
+        # Fake user agent oluşturucu
+        ua = UserAgent()
 
-        # Heylink için Cloudflare bypass headers
+        # Heylink için çok uzun delay (Cloudflare bypass için)
         if 'heylink' in url.lower():
-            headers = {
-                'User-Agent': random.choice(user_agents),
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'cross-site',
-                'Sec-Fetch-User': '?1',
-                'Cache-Control': 'max-age=0',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Referer': 'https://www.google.com/search?q=heylink',
-                'CF-RAY': 'dummy-ray-id',
-                'CF-Visitor': '{"scheme":"https"}'
-            }
-            delay = random.uniform(15, 30)  # Heylink için çok uzun delay
+            delay = random.uniform(20, 35)
         else:
-            # Normal siteler için
-            headers = {
-                'User-Agent': random.choice(user_agents),
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Cache-Control': 'max-age=0',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Referer': 'https://www.google.com/',
-                'Cookie': ''
-            }
-            delay = random.uniform(3, 7)  # Normal delay
+            delay = random.uniform(5, 10)
 
         print(f"⏳ {name}: {delay:.1f}s bekleniyor...")
         time.sleep(delay)
 
-        # Request
-        req = urllib.request.Request(url, headers=headers)
+        # Cloudflare bypass için cloudscraper kullan
+        print(f"🔥 {name}: Cloudflare bypass başlatılıyor...")
+        try:
+            # cloudscraper ile Cloudflare bypass
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(url, timeout=60)
 
-        # Heylink için Selenium kullan (eğer mevcutsa)
-        if 'heylink' in url.lower():
-            print(f"🤖 {name}: Selenium ile Cloudflare bypass deneniyor...")
+            if response.status_code == 200:
+                html = response.text
+                print(f"✅ {name}: Cloudflare bypass başarılı!")
+            else:
+                raise Exception(f"HTTP {response.status_code}")
+
+        except Exception as cf_error:
+            print(f"⚠️ {name}: Cloudflare bypass başarısız ({cf_error}), Selenium deneniyor...")
             try:
+                # Selenium fallback
                 chrome_options = Options()
                 chrome_options.add_argument('--headless')
                 chrome_options.add_argument('--no-sandbox')
                 chrome_options.add_argument('--disable-dev-shm-usage')
                 chrome_options.add_argument('--disable-gpu')
                 chrome_options.add_argument('--window-size=1920,1080')
-                chrome_options.add_argument(f'--user-agent={random.choice(user_agents)}')
+                chrome_options.add_argument(f'--user-agent={ua.random}')
 
                 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
                 driver.get(url)
 
                 # Sayfa yüklenene kadar bekle
-                time.sleep(5)
+                time.sleep(10)
                 html = driver.page_source
                 driver.quit()
 
                 print(f"✅ {name}: Selenium başarılı!")
 
             except Exception as selenium_error:
-                print(f"⚠️ {name}: Selenium başarısız ({selenium_error}), proxy ile requests deneniyor...")
-                # Selenium başarısız olursa proxy ile requests dene
+                print(f"⚠️ {name}: Selenium başarısız ({selenium_error}), proxy deneniyor...")
                 try:
+                    # Proxy fallback
                     proxy = random.choice(PROXY_LIST)
-                    response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
+                    headers = {'User-Agent': ua.random}
+                    response = requests.get(url, headers=headers, proxies=proxy, timeout=45)
                     response.raise_for_status()
                     html = response.text
                     print(f"✅ {name}: Proxy başarılı!")
                 except Exception as proxy_error:
-                    print(f"⚠️ {name}: Proxy de başarısız ({proxy_error}), normal yöntem deneniyor...")
-                    # Her şey başarısız olursa normal urllib kullan
-                    with urllib.request.urlopen(req, timeout=60, context=ssl._create_unverified_context()) as response:
-                        html = response.read().decode('utf-8', errors='ignore')
-        else:
-            # Normal siteler için urllib kullan
-            with urllib.request.urlopen(req, timeout=30, context=ssl._create_unverified_context()) as response:
-                html = response.read().decode('utf-8', errors='ignore')
+                    print(f"❌ {name}: Tüm yöntemler başarısız ({proxy_error})")
+                    raise Exception("Tüm bypass yöntemleri başarısız")
         # Debug: Save HTML to file for inspection
         with open("heylink_content.html", "w", encoding="utf-8") as f:
             f.write(html)
